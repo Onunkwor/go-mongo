@@ -144,4 +144,76 @@ func (db *DB) CreateJobListing(input model.CreateJobListingInput) (*model.JobLis
         URL:         input.URL,
     }
 	return job,nil
+};
+
+func (db *DB) UpdateJobListing (id string , input model.UpdateJobListingInput) (*model.JobListing, error){
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	// Convert the string ID to a MongoDB ObjectID
+	jobID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid job ID: %w", err)
+	}
+// Create a BSON map to hold the updates
+update := bson.M{}
+if input.Title != nil {
+	update["title"] = *input.Title
+}
+if input.Description != nil {
+	update["description"] = *input.Description
+}
+if input.Company != nil {
+	update["company"] = *input.Company
+}
+if input.URL != nil {
+	update["url"] = *input.URL
+}
+// Perform the update operation
+result := db.database.Collection("jobs").FindOneAndUpdate(ctx, bson.M{"_id": jobID}, bson.M{"$set": update}, options.FindOneAndUpdate().SetReturnDocument(options.After))
+if result.Err() != nil {
+	if result.Err() == mongo.ErrNoDocuments {
+		return nil, fmt.Errorf("job with ID %s not found", id)
+	}
+	return nil, fmt.Errorf("failed to update job: %w", result.Err())
+}
+// Create a variable to hold the updated job
+var updatedJob model.JobListing
+// Decode the result into updatedJob
+if err := result.Decode(&updatedJob); err != nil {
+	return nil, fmt.Errorf("failed to decode updated job: %w", err)
+}
+
+// Convert the ObjectID to string
+updatedJob.ID = jobID.Hex()
+
+return &updatedJob, nil
+}
+
+func (db *DB) DeleteJobListing(id string) (*model.DeleteJobResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Convert the string ID to a MongoDB ObjectID
+	jobID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid job ID: %w", err)
+	}
+
+	// Delete the job listing
+	result, err := db.database.Collection("jobs").DeleteOne(ctx, bson.M{"_id": jobID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete job: %w", err)
+	}
+
+	// Check if a document was deleted
+	if result.DeletedCount == 0 {
+		return nil, fmt.Errorf("job with ID %s not found", id)
+	}
+
+	// Prepare the response
+	response := &model.DeleteJobResponse{
+		DeleteJobID: id, // Return the ID of the deleted job
+	}
+
+	return response, nil
 }

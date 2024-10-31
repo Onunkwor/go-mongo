@@ -23,12 +23,20 @@ func (r *mutationResolver) CrateJobListing(ctx context.Context, input model.Crea
 
 // UpdateJobListing is the resolver for the updateJobListing field.
 func (r *mutationResolver) UpdateJobListing(ctx context.Context, id string, input model.UpdateJobListingInput) (*model.JobListing, error) {
-	panic(fmt.Errorf("not implemented: UpdateJobListing - updateJobListing"))
+	job, err := db.UpdateJobListing(id,input)
+	if err != nil {
+		return nil,fmt.Errorf("failed to updating job: %w", err)
+	}
+	return job, nil
 }
 
 // DeleteJobListing is the resolver for the deleteJobListing field.
 func (r *mutationResolver) DeleteJobListing(ctx context.Context, id string) (*model.DeleteJobResponse, error) {
-	panic(fmt.Errorf("not implemented: DeleteJobListing - deleteJobListing"))
+	response, err := db.DeleteJobListing(id)
+	if err != nil {
+		return nil,fmt.Errorf("failed to deleting job: %w", err)
+	}
+	return response, nil
 }
 
 // Jobs is the resolver for the jobs field.
